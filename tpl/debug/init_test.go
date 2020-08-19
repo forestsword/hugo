@@ -40,3 +40,38 @@ func TestInit(t *testing.T) {
 	c.Assert(found, qt.Equals, true)
 	c.Assert(ns.Context(), hqt.IsSameType, &Namespace{})
 }
+
+func TestTableOfContents(t *testing.T) {
+	if !Supports() {
+		t.Skip("asciidoc/asciidoctor not installed")
+	}
+	c := qt.New(t)
+	p, err := Provider.New(converter.ProviderConfig{Logger: loggers.NewErrorLogger()})
+	c.Assert(err, qt.IsNil)
+	conv, err := p.New(converter.DocumentContext{})
+	c.Assert(err, qt.IsNil)
+	b, err := conv.Convert(converter.RenderContext{Src: []byte(`:toc: macro
+:toclevels: 4
+toc::[]
+
+=== Introduction
+
+== Section 1
+
+=== Section 1.1
+
+==== Section 1.1.1
+
+=== Section 1.2
+
+testContent
+
+== Section 2
+`)})
+	c.Assert(err, qt.IsNil)
+	toc, ok := b.(converter.TableOfContentsProvider)
+	c.Assert(ok, qt.Equals, true)
+	root := toc.TableOfContents()
+	c.Assert(root.ToHTML(2, 4, false), qt.Equals, "<nav id=\"TableOfContents\">\n  <ul>\n    <li><a href=\"#_introduction\">Introduction</a></li>\n    <li><a href=\"#_section_1\">Section 1</a>\n      <ul>\n        <li><a href=\"#_section_1_1\">Section 1.1</a>\n          <ul>\n            <li><a href=\"#_section_1_1_1\">Section 1.1.1</a></li>\n          </ul>\n        </li>\n        <li><a href=\"#_section_1_2\">Section 1.2</a></li>\n      </ul>\n    </li>\n    <li><a href=\"#_section_2\">Section 2</a></li>\n  </ul>\n</nav>")
+	c.Assert(root.ToHTML(2, 3, false), qt.Equals, "<nav id=\"TableOfContents\">\n  <ul>\n    <li><a href=\"#_introduction\">Introduction</a></li>\n    <li><a href=\"#_section_1\">Section 1</a>\n      <ul>\n        <li><a href=\"#_section_1_1\">Section 1.1</a></li>\n        <li><a href=\"#_section_1_2\">Section 1.2</a></li>\n      </ul>\n    </li>\n    <li><a href=\"#_section_2\">Section 2</a></li>\n  </ul>\n</nav>")
+}
